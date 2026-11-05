@@ -15,7 +15,7 @@ The database schema and private photo bucket are defined in `supabase/migrations
 
 ## Hosting
 
-The GitHub Pages workflow in `.github/workflows/pages.yml` publishes `signup.html` over HTTPS after a push to `main`. It provides `/signup.html` and redirects the site root to the signup form. The source repository contains no server secrets.
+The GitHub Pages workflow in `.github/workflows/pages.yml` publishes `index.html` and `signup.html` over HTTPS after a push to `main`. The landing page's **Cadastrar-se** links open `/signup.html` in a new tab. The source repository contains no server secrets. Login is not connected yet.
 
 ## View signups
 
