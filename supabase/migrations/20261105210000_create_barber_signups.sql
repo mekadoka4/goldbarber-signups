@@ -19,6 +19,7 @@ create unique index if not exists barber_signups_whatsapp_unique
 
 alter table public.barber_signups enable row level security;
 revoke all on table public.barber_signups from anon, authenticated;
+grant all on table public.barber_signups to service_role;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (
