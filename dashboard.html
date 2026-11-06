@@ -50,6 +50,10 @@
     .hours-header, .hours-row { display: grid; grid-template-columns: minmax(96px, 1fr) 100px minmax(90px, .75fr) minmax(90px, .75fr); gap: 9px; align-items: center; }
     .hours-header { padding: 0 10px; color: var(--muted); font-size: 10px; }
     .hours-row { padding: 9px 10px; border: 1px solid #2e2c28; border-radius: 10px; background: var(--panel-soft); }
+    .all-days-hours { display: grid; gap: 12px; padding: 14px; border: 1px solid #4a4336; border-radius: 10px; background: #191711; }
+    .all-days-hours strong { display: block; color: var(--gold); font-size: 13px; }
+    .all-days-hours p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .all-days-controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 9px; align-items: end; }
     .day-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
     input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--gold); }
     .day-label input { flex: 0 0 auto; }
@@ -94,6 +98,8 @@
       .day-label { gap: 5px; font-size: 11px; }
       .day-state { font-size: 10px; }
       .hours-row input[type="time"] { min-height: 40px; padding: 6px 4px; font-size: 12px; }
+      .all-days-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .all-days-controls button { grid-column: 1 / -1; }
       .service-fields { grid-template-columns: 1fr; }
       .field.full { grid-column: auto; }
     }
@@ -127,6 +133,21 @@
           <p>Ative os dias em que trabalha e ajuste os horários.</p>
         </div>
         <form class="hours-form" id="hours-form">
+          <div class="all-days-hours">
+            <div>
+              <strong>Todos os dias</strong>
+              <p>Escolha um horário para aplicar aos sete dias. Depois, você pode ajustar cada dia individualmente.</p>
+            </div>
+            <div class="all-days-controls">
+              <label class="field" for="all-days-start">Início
+                <input id="all-days-start" type="time">
+              </label>
+              <label class="field" for="all-days-end">Fim
+                <input id="all-days-end" type="time">
+              </label>
+              <button class="button" id="apply-all-days" type="button">Aplicar a todos os dias</button>
+            </div>
+          </div>
           <div class="hours-header" aria-hidden="true"><span>Dia</span><span>Status</span><span>Início</span><span>Fim</span></div>
           <div id="hours-rows"></div>
           <div class="form-actions">
@@ -181,6 +202,7 @@
     const loading = document.getElementById('loading');
     const dashboard = document.getElementById('dashboard');
     const pageStatus = document.getElementById('page-status');
+    const hoursForm = document.getElementById('hours-form');
     const hoursRows = document.getElementById('hours-rows');
     const servicesList = document.getElementById('services-list');
     const hoursMessage = document.getElementById('hours-message');
@@ -251,6 +273,43 @@
         hoursRows.append(row);
       });
     }
+
+    function setHoursFormSaving(isSaving) {
+      hoursForm.querySelectorAll('input, button').forEach(control => {
+        if (isSaving) {
+          control.disabled = true;
+          return;
+        }
+        const row = control.closest('.hours-row');
+        const dayToggle = row?.querySelector('input[type="checkbox"]');
+        control.disabled = control.type === 'time' && dayToggle && !dayToggle.checked;
+      });
+    }
+
+    document.getElementById('apply-all-days').addEventListener('click', () => {
+      const startTime = document.getElementById('all-days-start').value;
+      const endTime = document.getElementById('all-days-end').value;
+      if (!startTime || !endTime || startTime >= endTime) {
+        setMessage(hoursMessage, 'Informe um horário válido para aplicar a todos os dias.', true);
+        return;
+      }
+
+      const rows = [...hoursRows.querySelectorAll('.hours-row')];
+      if (rows.length !== weekdays.length) {
+        setMessage(hoursMessage, 'Não foi possível aplicar o horário a todos os dias. Recarregue a página.', true);
+        return;
+      }
+      rows.forEach(row => {
+        const [toggle, start, end] = row.querySelectorAll('input');
+        toggle.checked = true;
+        row.querySelector('.day-state').textContent = 'Atende';
+        start.disabled = false;
+        end.disabled = false;
+        start.value = startTime;
+        end.value = endTime;
+      });
+      setMessage(hoursMessage, 'Horário aplicado aos sete dias. Você ainda pode ajustar cada dia individualmente.');
+    });
 
     function renderServices(services) {
       servicesList.replaceChildren();
@@ -332,7 +391,7 @@
       document.getElementById('service-name').focus();
     }
 
-    document.getElementById('hours-form').addEventListener('submit', async event => {
+    hoursForm.addEventListener('submit', async event => {
       event.preventDefault();
       setMessage(hoursMessage, '');
       const rows = [...hoursRows.querySelectorAll('.hours-row')];
@@ -353,7 +412,7 @@
       }
 
       const button = document.getElementById('save-hours');
-      button.disabled = true;
+      setHoursFormSaving(true);
       button.textContent = 'Salvando...';
       try {
         const { error } = await supabase.from('barber_working_hours').upsert(records, { onConflict: 'barber_id,day_of_week' });
@@ -362,7 +421,7 @@
       } catch {
         setMessage(hoursMessage, 'Não foi possível salvar os horários. Tente novamente.', true);
       } finally {
-        button.disabled = false;
+        setHoursFormSaving(false);
         button.textContent = 'Salvar horários';
       }
     });
