@@ -30,9 +30,7 @@
     input:focus { outline: 1px solid var(--gold); border-color: var(--gold); }
     button, .button-link { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: center; margin-top: 5px; padding: 0 16px; border: 0; border-radius: 9px; background: var(--gold); color: #14110b; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
     button:disabled { cursor: wait; opacity: .7; }
-    .secondary { border: 1px solid #4a4336; background: transparent; color: var(--text); }
     .status { min-height: 22px; margin: 0; color: #e4c47d; font-size: 13px; }
-    .session p { color: var(--muted); }
     .links { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 22px; font-size: 13px; }
     .links a { color: var(--gold); }
     [hidden] { display: none !important; }
@@ -60,13 +58,6 @@
       <button id="submit" type="submit" disabled>Entrar</button>
     </form>
 
-    <section class="session" id="session" aria-live="polite" hidden>
-      <h2>Login realizado</h2>
-      <p id="account"></p>
-      <p>A autenticação foi concluída. O painel GoldBarber ainda não está disponível.</p>
-      <button class="secondary" id="logout" type="button">Sair da conta</button>
-    </section>
-
     <nav class="links" aria-label="Navegação">
       <a href="./">Voltar ao início</a>
       <a href="signup.html">Criar cadastro</a>
@@ -76,35 +67,26 @@
     const form = document.getElementById('login-form');
     const status = document.getElementById('status');
     const submit = document.getElementById('submit');
-    const sessionPanel = document.getElementById('session');
-    const account = document.getElementById('account');
-
-    form.addEventListener('submit', event => event.preventDefault());
 
     (async () => {
       const supabaseUrl = 'https://qfboniifeieauwbjlifp.supabase.co';
       const publishableKey = 'sb_publishable_zMTYD3WAMHa7i-oJQFl-FA_rC7m0EVu';
       let supabase;
 
-      function showSession(user) {
-        form.hidden = true;
-        sessionPanel.hidden = false;
-        account.textContent = user.email || 'Conta autenticada';
-      }
-
       try {
         const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
         supabase = createClient(supabaseUrl, publishableKey);
         const { data, error } = await supabase.auth.getSession();
         if (error) throw error;
-        if (data.session) showSession(data.session.user);
+        if (data.session) window.location.replace('dashboard.html');
         else submit.disabled = false;
       } catch {
         status.textContent = 'Serviço de login indisponível no momento. Tente novamente mais tarde.';
         return;
       }
 
-      form.addEventListener('submit', async () => {
+      form.addEventListener('submit', async event => {
+        event.preventDefault();
         status.textContent = '';
         if (!form.reportValidity()) return;
 
@@ -127,32 +109,13 @@
             }
             return;
           }
-          showSession(data.user);
+          if (data.user) window.location.replace('dashboard.html');
+          else status.textContent = 'Sua sessão não foi iniciada. Tente entrar novamente.';
         } catch {
           status.textContent = 'Falha ao conectar com o serviço de login. Tente novamente.';
         } finally {
           submit.disabled = false;
           submit.textContent = 'Entrar';
-        }
-      });
-
-      document.getElementById('logout').addEventListener('click', async () => {
-        const logout = document.getElementById('logout');
-        logout.disabled = true;
-        try {
-          const { error } = await supabase.auth.signOut();
-          if (error) {
-            account.textContent = 'Não foi possível encerrar a sessão. Tente novamente.';
-            return;
-          }
-          sessionPanel.hidden = true;
-          form.hidden = false;
-          document.getElementById('password').value = '';
-          status.textContent = 'Você saiu da sua conta.';
-        } catch {
-          account.textContent = 'Falha ao conectar para encerrar a sessão.';
-        } finally {
-          logout.disabled = false;
         }
       });
     })();
