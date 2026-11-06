@@ -68,6 +68,7 @@
     .service-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 14px; border: 1px solid #302d28; border-radius: 11px; background: var(--panel-soft); }
     .service-card h3 { margin: 0 0 4px; font-size: 15px; }
     .service-card p { margin: 0; color: var(--muted); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .service-card .service-image { display: block; width: min(100%, 240px); max-height: 150px; margin-bottom: 10px; border: 1px solid #39352e; border-radius: 8px; object-fit: cover; }
     .service-card .meta { margin-top: 8px; color: #d7c18d; font-size: 12px; }
     .service-card .meta span + span::before { margin: 0 7px; color: #716958; content: "·"; }
     .service-card .service-state { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
@@ -79,6 +80,9 @@
     .field { display: grid; gap: 6px; color: #e4ddcf; font-size: 12px; }
     .field.full { grid-column: 1 / -1; }
     .field textarea { min-height: 78px; resize: vertical; }
+    .field input[type="file"] { min-height: auto; padding: 9px; }
+    .field-hint { color: var(--muted); font-size: 11px; }
+    .service-photo-preview { display: block; width: min(100%, 320px); max-height: 200px; border: 1px solid #39352e; border-radius: 8px; object-fit: cover; }
     .inline-check { display: flex; align-items: center; gap: 8px; color: #e4ddcf; font-size: 12px; }
     .page-status { min-height: 22px; margin: 12px 0 0; color: var(--muted); font-size: 13px; }
     .loading { padding: 70px 20px; color: var(--muted); text-align: center; }
@@ -181,6 +185,11 @@
             <label class="field" for="service-duration">Duração (minutos)
               <input id="service-duration" name="duration" type="number" min="5" max="480" step="5" inputmode="numeric" required>
             </label>
+            <label class="field full" for="service-photo">Foto do serviço (opcional)
+              <input id="service-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp">
+              <span class="field-hint">JPG, PNG ou WEBP, até 5 MB. Ao editar, selecione outra foto para substituí-la.</span>
+            </label>
+            <img class="service-photo-preview field full" id="service-photo-preview" alt="" hidden>
             <label class="inline-check full" for="service-enabled">
               <input id="service-enabled" name="enabled" type="checkbox" checked>
               Serviço disponível
@@ -211,13 +220,35 @@
     const serviceFormTitle = document.getElementById('service-form-title');
     const saveService = document.getElementById('save-service');
     const cancelEdit = document.getElementById('cancel-edit');
+    const servicePhotoInput = document.getElementById('service-photo');
+    const servicePhotoPreview = document.getElementById('service-photo-preview');
+    const servicePhotoTypes = new Map([
+      ['image/jpeg', 'jpg'],
+      ['image/png', 'png'],
+      ['image/webp', 'webp']
+    ]);
+    const servicePhotoMaxSize = 5 * 1024 * 1024;
+    const servicePhotoBucket = 'barber-service-photos';
     let supabase;
     let barber;
     let editingServiceId = null;
+    let editingServicePhotoPath = null;
+    let editingServicePhotoUrl = null;
+    let servicePhotoPreviewObjectUrl = null;
 
     function setMessage(element, text, isError = false) {
       element.textContent = text;
       element.classList.toggle('error', isError);
+    }
+
+    function showServicePhotoPreview(url, alt = '') {
+      if (servicePhotoPreviewObjectUrl) {
+        URL.revokeObjectURL(servicePhotoPreviewObjectUrl);
+      }
+      servicePhotoPreviewObjectUrl = url?.startsWith('blob:') ? url : null;
+      servicePhotoPreview.src = url || '';
+      servicePhotoPreview.alt = alt;
+      servicePhotoPreview.hidden = !url;
     }
 
     function showStartupError(message) {
@@ -325,6 +356,14 @@
         const card = document.createElement('article');
         card.className = 'service-card';
         const details = document.createElement('div');
+        if (service.photo_url) {
+          const photo = document.createElement('img');
+          photo.className = 'service-image';
+          photo.src = service.photo_url;
+          photo.alt = `Foto do serviço ${service.name}`;
+          photo.loading = 'lazy';
+          details.append(photo);
+        }
         const name = document.createElement('h3');
         name.textContent = service.name;
         details.append(name);
@@ -359,17 +398,26 @@
     async function loadData() {
       const [hoursResult, servicesResult] = await Promise.all([
         supabase.from('barber_working_hours').select('day_of_week, is_working, start_time, end_time').eq('barber_id', barber.id).order('day_of_week'),
-        supabase.from('barber_services').select('id, name, description, price, duration_minutes, is_enabled').eq('barber_id', barber.id).order('created_at', { ascending: true })
+        supabase.from('barber_services').select('id, name, description, price, duration_minutes, is_enabled, photo_path').eq('barber_id', barber.id).order('created_at', { ascending: true })
       ]);
       if (hoursResult.error) throw hoursResult.error;
       if (servicesResult.error) throw servicesResult.error;
+      const servicesWithPhotoUrls = await Promise.all(servicesResult.data.map(async service => {
+        if (!service.photo_path) return { ...service, photo_url: null };
+        const { data, error } = await supabase.storage.from(servicePhotoBucket).createSignedUrl(service.photo_path, 3600);
+        if (error) throw error;
+        return { ...service, photo_url: data.signedUrl };
+      }));
       renderHours(hoursResult.data);
-      renderServices(servicesResult.data);
+      renderServices(servicesWithPhotoUrls);
     }
 
     function resetServiceForm() {
       editingServiceId = null;
+      editingServicePhotoPath = null;
+      editingServicePhotoUrl = null;
       serviceForm.reset();
+      showServicePhotoPreview(null);
       document.getElementById('service-enabled').checked = true;
       serviceFormTitle.textContent = 'Adicionar serviço';
       saveService.textContent = 'Adicionar serviço';
@@ -379,17 +427,36 @@
 
     function startEditingService(service) {
       editingServiceId = service.id;
+      editingServicePhotoPath = service.photo_path;
+      editingServicePhotoUrl = service.photo_url;
       document.getElementById('service-name').value = service.name;
       document.getElementById('service-description').value = service.description || '';
       document.getElementById('service-price').value = service.price;
       document.getElementById('service-duration').value = service.duration_minutes;
       document.getElementById('service-enabled').checked = service.is_enabled;
+      showServicePhotoPreview(service.photo_url, `Foto atual do serviço ${service.name}`);
       serviceFormTitle.textContent = 'Editar serviço';
       saveService.textContent = 'Salvar alterações';
       cancelEdit.hidden = false;
       setMessage(serviceMessage, '');
       document.getElementById('service-name').focus();
     }
+
+    servicePhotoInput.addEventListener('change', () => {
+      const photo = servicePhotoInput.files[0];
+      if (!photo) {
+        showServicePhotoPreview(editingServicePhotoUrl, editingServicePhotoUrl ? 'Foto atual do serviço' : '');
+        return;
+      }
+      if (!servicePhotoTypes.has(photo.type) || photo.size > servicePhotoMaxSize) {
+        servicePhotoInput.value = '';
+        showServicePhotoPreview(editingServicePhotoUrl, editingServicePhotoUrl ? 'Foto atual do serviço' : '');
+        setMessage(serviceMessage, 'A foto deve ser JPG, PNG ou WEBP e ter até 5 MB.', true);
+        return;
+      }
+      showServicePhotoPreview(URL.createObjectURL(photo), 'Prévia da foto selecionada');
+      setMessage(serviceMessage, '');
+    });
 
     hoursForm.addEventListener('submit', async event => {
       event.preventDefault();
@@ -436,8 +503,14 @@
         description: document.getElementById('service-description').value.trim() || null,
         price: Number(document.getElementById('service-price').value),
         duration_minutes: Number(document.getElementById('service-duration').value),
-        is_enabled: document.getElementById('service-enabled').checked
+        is_enabled: document.getElementById('service-enabled').checked,
+        photo_path: editingServicePhotoPath
       };
+      const photo = servicePhotoInput.files[0];
+      if (photo && (!servicePhotoTypes.has(photo.type) || photo.size > servicePhotoMaxSize)) {
+        setMessage(serviceMessage, 'A foto deve ser JPG, PNG ou WEBP e ter até 5 MB.', true);
+        return;
+      }
       if (payload.name.length < 2) {
         setMessage(serviceMessage, 'O nome do serviço deve ter pelo menos 2 caracteres.', true);
         return;
@@ -445,24 +518,61 @@
 
       saveService.disabled = true;
       saveService.textContent = 'Salvando...';
-      const wasEditing = Boolean(editingServiceId);
+      const serviceId = editingServiceId;
+      const oldPhotoPath = editingServicePhotoPath;
+      const wasEditing = Boolean(serviceId);
+      serviceForm.querySelectorAll('input, textarea, button').forEach(control => {
+        control.disabled = true;
+      });
+      let uploadedPhotoPath = null;
+      let photoUploaded = false;
+      let oldPhotoRemovalFailed = false;
       try {
-        const result = editingServiceId
-          ? await supabase.from('barber_services').update(payload).eq('id', editingServiceId).eq('barber_id', barber.id).select('id').maybeSingle()
-          : await supabase.from('barber_services').insert(payload);
+        if (photo) {
+          uploadedPhotoPath = `${barber.id}/${crypto.randomUUID()}.${servicePhotoTypes.get(photo.type)}`;
+          const { error: uploadError } = await supabase.storage
+            .from(servicePhotoBucket)
+            .upload(uploadedPhotoPath, photo, { contentType: photo.type, upsert: false });
+          if (uploadError) throw uploadError;
+          photoUploaded = true;
+          payload.photo_path = uploadedPhotoPath;
+        }
+
+        const result = serviceId
+          ? await supabase.from('barber_services').update(payload).eq('id', serviceId).eq('barber_id', barber.id).select('id').maybeSingle()
+          : await supabase.from('barber_services').insert(payload).select('id').single();
         if (result.error) throw result.error;
         if (wasEditing && !result.data) throw new Error('Service was not found.');
+        if (photoUploaded && oldPhotoPath) {
+          const { error: removeError } = await supabase.storage.from(servicePhotoBucket).remove([oldPhotoPath]);
+          oldPhotoRemovalFailed = Boolean(removeError);
+        }
         resetServiceForm();
-        setMessage(serviceMessage, wasEditing ? 'Serviço atualizado com sucesso.' : 'Serviço adicionado com sucesso.');
+        setMessage(serviceMessage, oldPhotoRemovalFailed
+          ? 'Serviço salvo, mas não foi possível remover a foto anterior.'
+          : wasEditing ? 'Serviço atualizado com sucesso.' : 'Serviço adicionado com sucesso.', oldPhotoRemovalFailed);
         try {
           await loadData();
         } catch {
           setMessage(serviceMessage, 'Serviço salvo, mas a lista não foi atualizada. Recarregue a página.', true);
         }
       } catch {
-        setMessage(serviceMessage, 'Não foi possível salvar o serviço. Confira os dados e tente novamente.', true);
+        let photoCleanupFailed = false;
+        if (photoUploaded) {
+          try {
+            const { error } = await supabase.storage.from(servicePhotoBucket).remove([uploadedPhotoPath]);
+            photoCleanupFailed = Boolean(error);
+          } catch {
+            photoCleanupFailed = true;
+          }
+        }
+        setMessage(serviceMessage, photoCleanupFailed
+          ? 'Não foi possível salvar o serviço e remover a foto enviada. Tente novamente.'
+          : 'Não foi possível salvar o serviço. Confira os dados e tente novamente.', true);
       } finally {
-        saveService.disabled = false;
+        serviceForm.querySelectorAll('input, textarea, button').forEach(control => {
+          control.disabled = false;
+        });
         saveService.textContent = editingServiceId ? 'Salvar alterações' : 'Adicionar serviço';
       }
     });
