@@ -94,15 +94,6 @@
     .price small { color: var(--muted); font: 13px system-ui, sans-serif; }
     .plan ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; color: #d7d1c7; font-size: 13px; }
     .plan li::before { margin-right: 9px; color: var(--gold); content: "✓"; }
-    .login-panel { max-width: 520px; }
-    .login-form { display: grid; gap: 16px; }
-    .login-form label { display: grid; gap: 7px; color: #e4ddcf; font-size: 13px; }
-    .login-form input { width: 100%; height: 46px; padding: 0 13px; border: 1px solid #393631; border-radius: 9px; background: #0d0d0d; color: #fff; font: inherit; }
-    .login-form input:focus { outline: 1px solid var(--gold); border-color: var(--gold); }
-    .login-form .btn { min-height: 48px; }
-    .login-status { min-height: 24px; margin: 0; color: #e4c47d; font-size: 13px; }
-    .login-session h3 { margin-bottom: 8px; }
-    .login-session p { color: var(--muted); }
     footer { display: flex; justify-content: space-between; gap: 20px; padding: 26px 0 34px; border-top: 1px solid #ffffff0d; color: var(--muted); font-size: 11px; }
     .toast { position: fixed; right: 20px; bottom: 20px; max-width: min(360px, calc(100vw - 40px)); padding: 13px 16px; border: 1px solid #51452f; border-radius: 10px; background: #171510; color: var(--text); box-shadow: 0 12px 40px #0009; }
     .toast[hidden] { display: none; }
@@ -137,7 +128,7 @@
       <span>GoldBarber<small>SAAS PREMIUM</small></span>
     </a>
     <div class="auth">
-      <a class="btn" href="#entrar" id="login-link">Entrar</a>
+      <a class="btn" href="login.html">Entrar</a>
       <a class="btn primary" href="signup.html" target="_blank" rel="noopener noreferrer">Cadastrar-se</a>
     </div>
   </header>
@@ -242,128 +233,11 @@
       </div>
     </section>
 
-    <section class="section" id="entrar">
-      <div class="wrap">
-        <div class="section-head">
-          <span class="eyebrow">Área do barbeiro</span>
-          <h2>Entre na sua conta.</h2>
-          <p>Use o e-mail e a senha cadastrados. É necessário confirmar o e-mail antes de entrar.</p>
-        </div>
-        <div class="glass login-panel">
-          <form class="login-form" id="login-form">
-            <label for="login-email">E-mail
-              <input id="login-email" name="email" type="email" autocomplete="username" required>
-            </label>
-            <label for="login-password">Senha
-              <input id="login-password" name="password" type="password" autocomplete="current-password" minlength="8" required>
-            </label>
-            <p class="login-status" id="login-status" role="status" aria-live="polite"></p>
-            <button class="btn primary" id="login-submit" type="submit" disabled>Entrar</button>
-          </form>
-          <div class="login-session" id="login-session" aria-live="polite" hidden>
-            <h3>Login realizado</h3>
-            <p id="login-account"></p>
-            <p>A autenticação foi concluída. O painel GoldBarber ainda não está disponível.</p>
-            <button class="btn" id="logout-button" type="button">Sair da conta</button>
-          </div>
-        </div>
-      </div>
-    </section>
   </main>
 
   <footer class="wrap">
     <a class="brand" href="#"><span class="brand-mark">G</span><span>GoldBarber</span></a>
     <span>© 2026 GoldBarber. Plataforma premium para barbearias.</span>
   </footer>
-  <script>
-    const loginForm = document.getElementById('login-form');
-    loginForm.addEventListener('submit', event => event.preventDefault());
-
-    (async () => {
-      const SUPABASE_URL = 'https://qfboniifeieauwbjlifp.supabase.co';
-      const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_zMTYD3WAMHa7i-oJQFl-FA_rC7m0EVu';
-      const form = loginForm;
-      const status = document.getElementById('login-status');
-      const submitButton = document.getElementById('login-submit');
-      const sessionPanel = document.getElementById('login-session');
-      const account = document.getElementById('login-account');
-      let supabase;
-
-      function showSession(user) {
-        form.hidden = true;
-        sessionPanel.hidden = false;
-        account.textContent = user.email || 'Conta autenticada';
-      }
-
-      try {
-        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
-        supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-
-        const { data, error } = await supabase.auth.getSession();
-        if (error) throw error;
-        if (data.session) showSession(data.session.user);
-        else submitButton.disabled = false;
-      } catch {
-        status.textContent = 'Serviço de login indisponível no momento. Tente novamente mais tarde.';
-        submitButton.disabled = true;
-        return;
-      }
-
-      form.addEventListener('submit', async event => {
-        event.preventDefault();
-        status.textContent = '';
-        if (!form.reportValidity()) return;
-
-        submitButton.disabled = true;
-        submitButton.textContent = 'Entrando...';
-        try {
-          const { data, error } = await supabase.auth.signInWithPassword({
-            email: document.getElementById('login-email').value.trim().toLowerCase(),
-            password: document.getElementById('login-password').value,
-          });
-          if (error) {
-            if (error.code === 'email_not_confirmed') {
-              status.textContent = 'Confirme seu e-mail pelo link enviado antes de entrar.';
-            } else if (error.code === 'invalid_credentials') {
-              status.textContent = 'E-mail ou senha incorretos.';
-            } else if (error.code === 'over_request_rate_limit') {
-              status.textContent = 'Muitas tentativas. Aguarde um pouco e tente novamente.';
-            } else {
-              status.textContent = 'Não foi possível entrar. Verifique seus dados e tente novamente.';
-            }
-            return;
-          }
-          showSession(data.user);
-        } catch {
-          status.textContent = 'Falha ao conectar com o serviço de login. Tente novamente.';
-        } finally {
-          submitButton.disabled = false;
-          submitButton.textContent = 'Entrar';
-        }
-      });
-
-      document.getElementById('logout-button').addEventListener('click', async () => {
-        const logoutButton = document.getElementById('logout-button');
-        logoutButton.disabled = true;
-        try {
-          const { error } = await supabase.auth.signOut();
-          if (error) {
-            document.getElementById('login-account').textContent =
-              'Não foi possível encerrar a sessão. Tente novamente.';
-            return;
-          }
-          sessionPanel.hidden = true;
-          form.hidden = false;
-          document.getElementById('login-password').value = '';
-          status.textContent = 'Você saiu da sua conta.';
-        } catch {
-          document.getElementById('login-account').textContent =
-            'Falha ao conectar para encerrar a sessão.';
-        } finally {
-          logoutButton.disabled = false;
-        }
-      });
-    })();
-  </script>
 </body>
 </html>
