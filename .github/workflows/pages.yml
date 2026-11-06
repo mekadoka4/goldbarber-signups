@@ -29,6 +29,7 @@ jobs:
           cp index.html public/index.html
           cp signup.html public/signup.html
           cp login.html public/login.html
+          cp dashboard.html public/dashboard.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public

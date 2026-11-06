@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Gerencie seus horários de atendimento e serviços na GoldBarber.">
+  <title>Área do barbeiro · GoldBarber</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0b0b;
+      --panel: #151515;
+      --panel-soft: #111;
+      --line: #393631;
+      --text: #f4f0e8;
+      --muted: #a8a39a;
+      --gold: #c8a665;
+      --green: #9fd0ac;
+      --red: #ef9b91;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }
+    button, input, textarea { font: inherit; }
+    button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
+    a { color: inherit; }
+    .wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+    .topbar { min-height: 78px; display: flex; align-items: center; justify-content: space-between; gap: 18px; border-bottom: 1px solid #ffffff0d; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; color: var(--text); font-weight: 750; letter-spacing: .02em; text-decoration: none; }
+    .brand-mark { display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid #8e7547; border-radius: 12px; color: var(--gold); font: 21px Georgia, serif; }
+    .brand small { display: block; color: var(--muted); font-size: 9px; font-weight: 600; letter-spacing: .2em; }
+    .user-actions { display: flex; align-items: center; gap: 14px; }
+    .account { max-width: 260px; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+    .button { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; padding: 0 15px; border: 1px solid #4a4336; border-radius: 9px; background: transparent; color: var(--text); font-weight: 650; text-decoration: none; cursor: pointer; }
+    .button:hover { border-color: var(--gold); }
+    .button.primary { border-color: var(--gold); background: var(--gold); color: #14110b; }
+    .button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .button:disabled { cursor: wait; opacity: .65; }
+    main { padding: 48px 0 72px; }
+    .intro { margin-bottom: 28px; }
+    .eyebrow { color: var(--gold); font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+    h1, h2, p { margin-top: 0; }
+    h1 { margin: 8px 0; font: 500 clamp(32px, 5vw, 46px)/1.12 Georgia, "Times New Roman", serif; letter-spacing: -.035em; }
+    .intro p { margin: 0; color: var(--muted); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 18px; align-items: start; }
+    .panel { min-width: 0; padding: 24px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+    .panel-head { margin-bottom: 18px; }
+    h2 { margin: 0 0 5px; font: 500 25px/1.2 Georgia, "Times New Roman", serif; }
+    .panel-head p { margin: 0; color: var(--muted); font-size: 13px; }
+    .hours-form { display: grid; gap: 8px; }
+    .hours-header, .hours-row { display: grid; grid-template-columns: minmax(96px, 1fr) 100px minmax(90px, .75fr) minmax(90px, .75fr); gap: 9px; align-items: center; }
+    .hours-header { padding: 0 10px; color: var(--muted); font-size: 10px; }
+    .hours-row { padding: 9px 10px; border: 1px solid #2e2c28; border-radius: 10px; background: var(--panel-soft); }
+    .day-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 650; }
+    input[type="checkbox"] { width: 17px; height: 17px; accent-color: var(--gold); }
+    .day-label input { flex: 0 0 auto; }
+    .day-state { color: var(--muted); font-size: 11px; text-align: center; }
+    .hours-row input[type="time"], .field input, .field textarea { width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: #0d0d0d; color: var(--text); }
+    .hours-row input:disabled { opacity: .45; }
+    .form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 16px; }
+    .message { min-height: 20px; margin: 0; color: var(--green); font-size: 12px; }
+    .message.error { color: var(--red); }
+    .services-list { display: grid; gap: 10px; margin: 0 0 22px; }
+    .empty { margin: 0; padding: 16px; border: 1px dashed #504838; border-radius: 10px; color: var(--muted); font-size: 13px; }
+    .service-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 14px; border: 1px solid #302d28; border-radius: 11px; background: var(--panel-soft); }
+    .service-card h3 { margin: 0 0 4px; font-size: 15px; }
+    .service-card p { margin: 0; color: var(--muted); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .service-card .meta { margin-top: 8px; color: #d7c18d; font-size: 12px; }
+    .service-card .meta span + span::before { margin: 0 7px; color: #716958; content: "·"; }
+    .service-card .service-state { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
+    .service-card .edit { align-self: center; min-height: 38px; padding: 0 11px; font-size: 12px; }
+    .service-form { padding-top: 18px; border-top: 1px solid var(--line); }
+    .service-form-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .service-form-head h3 { margin: 0; font-size: 16px; }
+    .service-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+    .field { display: grid; gap: 6px; color: #e4ddcf; font-size: 12px; }
+    .field.full { grid-column: 1 / -1; }
+    .field textarea { min-height: 78px; resize: vertical; }
+    .inline-check { display: flex; align-items: center; gap: 8px; color: #e4ddcf; font-size: 12px; }
+    .page-status { min-height: 22px; margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+    .loading { padding: 70px 20px; color: var(--muted); text-align: center; }
+    [hidden] { display: none !important; }
+    @media (max-width: 940px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 560px) {
+      .wrap { width: min(100% - 28px, 1120px); }
+      .topbar { min-height: 70px; }
+      .user-actions { gap: 8px; }
+      .account { display: none; }
+      .button { min-height: 39px; padding: 0 11px; font-size: 12px; }
+      main { padding: 34px 0 50px; }
+      .panel { padding: 17px; }
+      .hours-header, .hours-row { grid-template-columns: minmax(70px, 1fr) 48px minmax(60px, .7fr) minmax(60px, .7fr); gap: 4px; }
+      .hours-header { padding: 0 6px; font-size: 9px; }
+      .hours-row { padding: 8px 6px; }
+      .day-label { gap: 5px; font-size: 11px; }
+      .day-state { font-size: 10px; }
+      .hours-row input[type="time"] { min-height: 40px; padding: 6px 4px; font-size: 12px; }
+      .service-fields { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="wrap topbar">
+    <a class="brand" href="./" aria-label="GoldBarber início">
+      <span class="brand-mark">G</span>
+      <span>GoldBarber<small>ÁREA DO BARBEIRO</small></span>
+    </a>
+    <div class="user-actions">
+      <span class="account" id="account"></span>
+      <button class="button" id="logout" type="button" disabled>Sair</button>
+    </div>
+  </header>
+
+  <div class="wrap loading" id="loading" role="status" aria-live="polite">Carregando sua área...</div>
+  <main class="wrap" id="dashboard" hidden>
+    <section class="intro">
+      <span class="eyebrow">Seu espaço profissional</span>
+      <h1>Organize sua rotina</h1>
+      <p>Defina quando atende e deixe seus serviços sempre atualizados.</p>
+    </section>
+
+    <p class="page-status" id="page-status" role="status" aria-live="polite"></p>
+    <div class="layout">
+      <section class="panel" aria-labelledby="hours-title">
+        <div class="panel-head">
+          <h2 id="hours-title">Horários de atendimento</h2>
+          <p>Ative os dias em que trabalha e ajuste os horários.</p>
+        </div>
+        <form class="hours-form" id="hours-form">
+          <div class="hours-header" aria-hidden="true"><span>Dia</span><span>Status</span><span>Início</span><span>Fim</span></div>
+          <div id="hours-rows"></div>
+          <div class="form-actions">
+            <button class="button primary" id="save-hours" type="submit">Salvar horários</button>
+            <p class="message" id="hours-message" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" aria-labelledby="services-title">
+        <div class="panel-head">
+          <h2 id="services-title">Seus serviços</h2>
+          <p>Edite os detalhes, valores e disponibilidade de cada atendimento.</p>
+        </div>
+        <div class="services-list" id="services-list"></div>
+        <form class="service-form" id="service-form">
+          <div class="service-form-head">
+            <h3 id="service-form-title">Adicionar serviço</h3>
+            <button class="button" id="cancel-edit" type="button" hidden>Cancelar edição</button>
+          </div>
+          <div class="service-fields">
+            <label class="field full" for="service-name">Nome do serviço
+              <input id="service-name" name="name" maxlength="100" autocomplete="off" required>
+            </label>
+            <label class="field full" for="service-description">Descrição (opcional)
+              <textarea id="service-description" name="description" maxlength="500"></textarea>
+            </label>
+            <label class="field" for="service-price">Preço (R$)
+              <input id="service-price" name="price" type="number" min="0" max="99999999.99" step="0.01" inputmode="decimal" required>
+            </label>
+            <label class="field" for="service-duration">Duração (minutos)
+              <input id="service-duration" name="duration" type="number" min="5" max="480" step="5" inputmode="numeric" required>
+            </label>
+            <label class="inline-check full" for="service-enabled">
+              <input id="service-enabled" name="enabled" type="checkbox" checked>
+              Serviço disponível
+            </label>
+          </div>
+          <div class="form-actions">
+            <button class="button primary" id="save-service" type="submit">Adicionar serviço</button>
+            <p class="message" id="service-message" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const SUPABASE_URL = 'https://qfboniifeieauwbjlifp.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_zMTYD3WAMHa7i-oJQFl-FA_rC7m0EVu';
+    const weekdays = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    const loading = document.getElementById('loading');
+    const dashboard = document.getElementById('dashboard');
+    const pageStatus = document.getElementById('page-status');
+    const hoursRows = document.getElementById('hours-rows');
+    const servicesList = document.getElementById('services-list');
+    const hoursMessage = document.getElementById('hours-message');
+    const serviceMessage = document.getElementById('service-message');
+    const serviceForm = document.getElementById('service-form');
+    const serviceFormTitle = document.getElementById('service-form-title');
+    const saveService = document.getElementById('save-service');
+    const cancelEdit = document.getElementById('cancel-edit');
+    let supabase;
+    let barber;
+    let editingServiceId = null;
+
+    function setMessage(element, text, isError = false) {
+      element.textContent = text;
+      element.classList.toggle('error', isError);
+    }
+
+    function showStartupError(message) {
+      loading.textContent = message;
+      const retry = document.createElement('button');
+      retry.className = 'button';
+      retry.type = 'button';
+      retry.textContent = 'Tentar novamente';
+      retry.addEventListener('click', () => window.location.reload());
+      loading.append(document.createElement('br'), retry);
+    }
+
+    function renderHours(records) {
+      const byDay = new Map(records.map(record => [record.day_of_week, record]));
+      hoursRows.replaceChildren();
+      weekdays.forEach((day, index) => {
+        const record = byDay.get(index);
+        const row = document.createElement('div');
+        row.className = 'hours-row';
+        row.dataset.day = String(index);
+
+        const label = document.createElement('label');
+        label.className = 'day-label';
+        const toggle = document.createElement('input');
+        toggle.type = 'checkbox';
+        toggle.checked = record ? record.is_working : false;
+        toggle.setAttribute('aria-label', `${day}: trabalha neste dia`);
+        const name = document.createElement('span');
+        name.textContent = day;
+        label.append(toggle, name);
+
+        const state = document.createElement('span');
+        state.className = 'day-state';
+        state.textContent = toggle.checked ? 'Atende' : 'Folga';
+        const start = document.createElement('input');
+        start.type = 'time';
+        start.value = record?.start_time?.slice(0, 5) || '';
+        start.disabled = !toggle.checked;
+        start.setAttribute('aria-label', `Início do expediente: ${day}`);
+        const end = document.createElement('input');
+        end.type = 'time';
+        end.value = record?.end_time?.slice(0, 5) || '';
+        end.disabled = !toggle.checked;
+        end.setAttribute('aria-label', `Fim do expediente: ${day}`);
+
+        toggle.addEventListener('change', () => {
+          state.textContent = toggle.checked ? 'Atende' : 'Folga';
+          start.disabled = !toggle.checked;
+          end.disabled = !toggle.checked;
+          setMessage(hoursMessage, '');
+        });
+        row.append(label, state, start, end);
+        hoursRows.append(row);
+      });
+    }
+
+    function renderServices(services) {
+      servicesList.replaceChildren();
+      if (!services.length) {
+        const empty = document.createElement('p');
+        empty.className = 'empty';
+        empty.textContent = 'Nenhum serviço cadastrado ainda. Adicione seu primeiro atendimento abaixo.';
+        servicesList.append(empty);
+        return;
+      }
+
+      services.forEach(service => {
+        const card = document.createElement('article');
+        card.className = 'service-card';
+        const details = document.createElement('div');
+        const name = document.createElement('h3');
+        name.textContent = service.name;
+        details.append(name);
+        if (service.description) {
+          const description = document.createElement('p');
+          description.textContent = service.description;
+          details.append(description);
+        }
+        const meta = document.createElement('div');
+        meta.className = 'meta';
+        const price = document.createElement('span');
+        price.textContent = Number(service.price).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const duration = document.createElement('span');
+        duration.textContent = `${service.duration_minutes} min`;
+        meta.append(price, duration);
+        const state = document.createElement('span');
+        state.className = 'service-state';
+        state.textContent = service.is_enabled ? 'Disponível' : 'Pausado';
+        details.append(meta, state);
+
+        const edit = document.createElement('button');
+        edit.className = 'button edit';
+        edit.type = 'button';
+        edit.textContent = 'Editar';
+        edit.setAttribute('aria-label', `Editar serviço ${service.name}`);
+        edit.addEventListener('click', () => startEditingService(service));
+        card.append(details, edit);
+        servicesList.append(card);
+      });
+    }
+
+    async function loadData() {
+      const [hoursResult, servicesResult] = await Promise.all([
+        supabase.from('barber_working_hours').select('day_of_week, is_working, start_time, end_time').eq('barber_id', barber.id).order('day_of_week'),
+        supabase.from('barber_services').select('id, name, description, price, duration_minutes, is_enabled').eq('barber_id', barber.id).order('created_at', { ascending: true })
+      ]);
+      if (hoursResult.error) throw hoursResult.error;
+      if (servicesResult.error) throw servicesResult.error;
+      renderHours(hoursResult.data);
+      renderServices(servicesResult.data);
+    }
+
+    function resetServiceForm() {
+      editingServiceId = null;
+      serviceForm.reset();
+      document.getElementById('service-enabled').checked = true;
+      serviceFormTitle.textContent = 'Adicionar serviço';
+      saveService.textContent = 'Adicionar serviço';
+      cancelEdit.hidden = true;
+      setMessage(serviceMessage, '');
+    }
+
+    function startEditingService(service) {
+      editingServiceId = service.id;
+      document.getElementById('service-name').value = service.name;
+      document.getElementById('service-description').value = service.description || '';
+      document.getElementById('service-price').value = service.price;
+      document.getElementById('service-duration').value = service.duration_minutes;
+      document.getElementById('service-enabled').checked = service.is_enabled;
+      serviceFormTitle.textContent = 'Editar serviço';
+      saveService.textContent = 'Salvar alterações';
+      cancelEdit.hidden = false;
+      setMessage(serviceMessage, '');
+      document.getElementById('service-name').focus();
+    }
+
+    document.getElementById('hours-form').addEventListener('submit', async event => {
+      event.preventDefault();
+      setMessage(hoursMessage, '');
+      const rows = [...hoursRows.querySelectorAll('.hours-row')];
+      const records = rows.map(row => {
+        const inputs = row.querySelectorAll('input');
+        return {
+          barber_id: barber.id,
+          day_of_week: Number(row.dataset.day),
+          is_working: inputs[0].checked,
+          start_time: inputs[1].value || null,
+          end_time: inputs[2].value || null
+        };
+      });
+      const invalid = records.find(record => record.is_working && (!record.start_time || !record.end_time || record.start_time >= record.end_time));
+      if (invalid) {
+        setMessage(hoursMessage, `Informe horários válidos para ${weekdays[invalid.day_of_week].toLowerCase()}.`, true);
+        return;
+      }
+
+      const button = document.getElementById('save-hours');
+      button.disabled = true;
+      button.textContent = 'Salvando...';
+      try {
+        const { error } = await supabase.from('barber_working_hours').upsert(records, { onConflict: 'barber_id,day_of_week' });
+        if (error) throw error;
+        setMessage(hoursMessage, 'Horários salvos com sucesso.');
+      } catch {
+        setMessage(hoursMessage, 'Não foi possível salvar os horários. Tente novamente.', true);
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Salvar horários';
+      }
+    });
+
+    serviceForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      setMessage(serviceMessage, '');
+      if (!serviceForm.reportValidity()) return;
+      const payload = {
+        barber_id: barber.id,
+        name: document.getElementById('service-name').value.trim(),
+        description: document.getElementById('service-description').value.trim() || null,
+        price: Number(document.getElementById('service-price').value),
+        duration_minutes: Number(document.getElementById('service-duration').value),
+        is_enabled: document.getElementById('service-enabled').checked
+      };
+      if (payload.name.length < 2) {
+        setMessage(serviceMessage, 'O nome do serviço deve ter pelo menos 2 caracteres.', true);
+        return;
+      }
+
+      saveService.disabled = true;
+      saveService.textContent = 'Salvando...';
+      const wasEditing = Boolean(editingServiceId);
+      try {
+        const result = editingServiceId
+          ? await supabase.from('barber_services').update(payload).eq('id', editingServiceId).eq('barber_id', barber.id).select('id').maybeSingle()
+          : await supabase.from('barber_services').insert(payload);
+        if (result.error) throw result.error;
+        if (wasEditing && !result.data) throw new Error('Service was not found.');
+        resetServiceForm();
+        setMessage(serviceMessage, wasEditing ? 'Serviço atualizado com sucesso.' : 'Serviço adicionado com sucesso.');
+        try {
+          await loadData();
+        } catch {
+          setMessage(serviceMessage, 'Serviço salvo, mas a lista não foi atualizada. Recarregue a página.', true);
+        }
+      } catch {
+        setMessage(serviceMessage, 'Não foi possível salvar o serviço. Confira os dados e tente novamente.', true);
+      } finally {
+        saveService.disabled = false;
+        saveService.textContent = editingServiceId ? 'Salvar alterações' : 'Adicionar serviço';
+      }
+    });
+
+    cancelEdit.addEventListener('click', resetServiceForm);
+
+    (async () => {
+      try {
+        const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2');
+        supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+        supabase.auth.onAuthStateChange((_event, session) => {
+          if (!session) window.location.replace('login.html');
+        });
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) throw sessionError;
+        if (!sessionData.session) {
+          window.location.replace('login.html');
+          return;
+        }
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!userData.user) {
+          window.location.replace('login.html');
+          return;
+        }
+
+        barber = userData.user;
+        document.getElementById('account').textContent = barber.email || 'Conta autenticada';
+        await loadData();
+        loading.hidden = true;
+        dashboard.hidden = false;
+        document.getElementById('logout').disabled = false;
+      } catch {
+        showStartupError('Não foi possível carregar sua área agora. Verifique sua conexão e tente novamente.');
+      }
+    })();
+
+    document.getElementById('logout').addEventListener('click', async event => {
+      const button = event.currentTarget;
+      button.disabled = true;
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        window.location.replace('login.html');
+      } catch {
+        button.disabled = false;
+        setMessage(pageStatus, 'Não foi possível encerrar a sessão. Tente novamente.', true);
+      }
+    });
+  </script>
+</body>
+</html>
