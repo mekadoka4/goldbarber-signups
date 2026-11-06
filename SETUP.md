@@ -1,6 +1,6 @@
 # GoldBarber signup
 
-The signup page sends the barber's name, email, phone, WhatsApp, and profile photo to the `register-barber` Supabase Edge Function. The function validates the fields, saves the photo in a private bucket, and writes the record to `public.barber_signups`. Unique database indexes reject duplicate emails, phone numbers, and WhatsApp numbers. The browser has no direct read access to these records or photos.
+The signup page sends the barber's name, email, phone, WhatsApp, password, and profile photo to the `register-barber` Supabase Edge Function. The function validates the fields, creates the account with Supabase Auth, saves the photo in a private bucket, and writes the record to `public.barber_signups`. The profile stores only the Auth user ID (`auth_user_id`), never the password. Unique database indexes reject duplicate emails, phone numbers, WhatsApp numbers, and Auth user IDs. The browser has no direct read access to these records or photos.
 
 ## Current deployment
 
@@ -11,11 +11,13 @@ The signup page sends the barber's name, email, phone, WhatsApp, and profile pho
 - Function URL: `https://qfboniifeieauwbjlifp.supabase.co/functions/v1/register-barber`
 - The publishable key is configured in `signup.html`; it is designed for browser use. Never add a Supabase secret/service-role key to the site or repository.
 
-The database schema and private photo bucket are defined in `supabase/migrations/20261105210000_create_barber_signups.sql`. The deployed function source is in `supabase/functions/register-barber/index.ts`.
+The initial database schema and private photo bucket are defined in `supabase/migrations/20261105210000_create_barber_signups.sql`; the Auth user link is added by `supabase/migrations/20261105212000_link_barber_signups_to_auth.sql`. The deployed function source is in `supabase/functions/register-barber/index.ts`.
 
 ## Hosting
 
-The GitHub Pages workflow in `.github/workflows/pages.yml` publishes `index.html` and `signup.html` over HTTPS after a push to `main`. The landing page's **Cadastrar-se** links open `/signup.html` in a new tab. The source repository contains no server secrets. Login is not connected yet.
+The GitHub Pages workflow in `.github/workflows/pages.yml` publishes `index.html` and `signup.html` over HTTPS after a push to `main`. The landing page's **Cadastrar-se** links open `/signup.html` in a new tab. The source repository contains no server secrets. Account creation uses `SUPABASE_SERVICE_ROLE_KEY` only in the Edge Function environment; the password is not logged or written to the signup table. Supabase Auth's email-confirmation behavior follows the project configuration. A login screen/flow is not connected yet.
+
+The signup form requires a password between 8 and 128 characters. Auth users are created unconfirmed and receive a signup confirmation email before registration succeeds. The user must confirm the email to activate the account. If storing the photo or signup profile or sending the confirmation email fails after the Auth user is created, the function attempts to remove the profile, photo, and Auth user so a partial signup is not left behind.
 
 ## View signups
 

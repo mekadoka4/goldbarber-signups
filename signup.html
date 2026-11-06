@@ -56,9 +56,13 @@
           <label for="whatsapp">WhatsApp</label>
           <input id="whatsapp" name="whatsapp" type="tel" placeholder="(11) 99999-9999" required>
         </div>
+        <div class="field full">
+          <label for="password">Senha (mínimo de 8 caracteres)</label>
+          <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+        </div>
       </div>
       <button type="submit">Criar cadastro</button>
-      <p class="note">Seus dados e sua foto serão enviados para um armazenamento protegido.</p>
+      <p class="note">Você precisará confirmar seu e-mail para ativar a conta. A senha não é salva nos dados do perfil.</p>
       <div id="status" role="status"></div>
     </form>
   </main>
@@ -116,7 +120,7 @@
           throw new Error(result.error || 'Não foi possível concluir o cadastro. Tente novamente.');
         }
 
-        status.textContent = 'Cadastro salvo com sucesso!';
+        status.textContent = 'Cadastro criado! Enviamos um link de confirmação para seu e-mail. Confirme-o para ativar sua conta.';
         form.reset();
         document.getElementById('avatar').textContent = 'Sua foto';
       } catch (error) {
