@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const signupConfirmationUrl =
+  "https://mekadoka4.github.io/goldbarber-signups/signup.html";
+
 const json = (body: Record<string, string>, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -109,6 +112,7 @@ Deno.serve(async (request: Request) => {
     const { error: confirmationError } = await supabase.auth.resend({
       type: "signup",
       email,
+      options: { emailRedirectTo: signupConfirmationUrl },
     });
     if (confirmationError) {
       throw new Error("Unable to send signup confirmation email.");

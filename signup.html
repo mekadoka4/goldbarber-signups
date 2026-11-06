@@ -75,6 +75,30 @@
     const phoneInput = document.getElementById('phone');
     const whatsappInput = document.getElementById('whatsapp');
 
+    function handleEmailConfirmation() {
+      const query = new URLSearchParams(window.location.search);
+      const fragment = new URLSearchParams(window.location.hash.slice(1));
+      const errorCode = query.get('error_code') || fragment.get('error_code') || query.get('error');
+
+      if (errorCode) {
+        window.history.replaceState(null, document.title, window.location.pathname);
+        status.textContent = errorCode === 'otp_expired'
+          ? 'Este link de confirmação expirou ou já foi usado. Solicite um novo e-mail de confirmação.'
+          : 'Não foi possível confirmar seu e-mail com este link. Solicite um novo e-mail de confirmação.';
+        return;
+      }
+
+      if (fragment.get('type') === 'signup' && fragment.has('access_token')) {
+        window.history.replaceState(null, document.title, window.location.pathname);
+        form.hidden = true;
+        document.querySelector('h1').textContent = 'E-mail confirmado!';
+        document.querySelector('.sub').textContent = 'Sua conta GoldBarber está ativa.';
+        status.textContent = 'Confirmação concluída com sucesso.';
+      }
+    }
+
+    handleEmailConfirmation();
+
     function normalizePhone(value) {
       return value.replace(/\D/g, '');
     }
